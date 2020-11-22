@@ -51,7 +51,7 @@ public class WebCrawler {
             // If element contains a link append that link to pending urls
             if (element.hasAttr("href") && !element.tagName().equals("link") && !element.tagName().equals("script")) {
                 String url = element.absUrl("href");
-                if (!(url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".gif") || url.endsWith(".ico"))) {
+                if (!(url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".gif") || url.endsWith(".ico")) && !url.isBlank()) {
                     pendingURLs.add(element.absUrl("href"));
                 }
             }
@@ -64,28 +64,31 @@ public class WebCrawler {
 
     private void openUrlDocument(int tries) {
         final int timeout = 5;
-        String urlStr = "default";
-        try {
-            urlStr = pendingURLs.peek();
-            document = Jsoup.connect(urlStr).get();
-        } catch (UnsupportedMimeTypeException e) {
-            System.out.println("Unsupported document type: " + e.getMimeType() + " on " + urlStr);
-        } catch (IllegalArgumentException | NoSuchElementException | MalformedURLException e) {
-            e.printStackTrace();
-            System.out.println("URL IS: " + urlStr);
-        } catch (SocketTimeoutException e) {
-            e.printStackTrace();
-            System.out.println("Connection timed out... ");
-            if (tries < timeout) {
-                System.out.println("Trying again.");
-                openUrlDocument(tries + 1);
+        String urlStr = pendingURLs.peek();
+        if (!traversedURLs.contains(urlStr)) {
+            try {
+                document = Jsoup.connect(urlStr).get();
+            } catch (UnsupportedMimeTypeException e) {
+                System.out.println("Unsupported document type: " + e.getMimeType() + " on " + urlStr);
+            } catch (IllegalArgumentException | NoSuchElementException | MalformedURLException e) {
+                e.printStackTrace();
+                System.out.println("URL IS: " + urlStr);
+            } catch (SocketTimeoutException e) {
+                e.printStackTrace();
+                System.out.println("Connection timed out... ");
+                if (tries < timeout) {
+                    System.out.println("Trying again.");
+                    openUrlDocument(tries + 1);
+                }
+            } catch (HttpStatusException e) {
+                System.out.println("HTTP Error code " + e.getStatusCode() + " on " + urlStr);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (HttpStatusException e) {
-            System.out.println("HTTP Error code " + e.getStatusCode() + " on " + urlStr);
-        } catch (IOException e) {
-            e.printStackTrace();
+            traversedURLs.add(pendingURLs.peek());
         }
-        traversedURLs.add(pendingURLs.remove());
+        pendingURLs.remove();
+
     }
 
     public int getNumTraversed() {
@@ -101,8 +104,16 @@ public class WebCrawler {
         sortedWords.forEach((k,v) -> System.out.println("Word: " + k + " | Occurrences: " + v));
     }
 
-    public void doTraversal() {
+    public String getCurrentUrl() {
+        return pendingURLs.peek();
+    }
+
+    public int doTraversal() {
+        if (pendingURLs.size() == 0) {
+            return -1;
+        }
         openUrlDocument();
         parseDocument();
+        return 1;
     }
 }
