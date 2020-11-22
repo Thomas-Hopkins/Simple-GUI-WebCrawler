@@ -17,6 +17,7 @@ public class WebCrawler {
         traversedURLs = new TreeSet<>();
         pendingURLs = new LinkedList<>();
         addPending(url);
+
     }
 
     private void addTraversed(String url) {
@@ -29,34 +30,57 @@ public class WebCrawler {
 
     private void parseDocument() {
         while (inputStream.hasNext()) {
-            String ch = inputStream.next();
-            // Skip <class> tags
-            if (ch.equals("<")) {
-                while (!ch.equals(">")) {
-                    if (inputStream.hasNext()) {
-                        ch = inputStream.next();
+            boolean inTag = false;
+            Stack<String> tagStack = new Stack<>();
+            String line = inputStream.nextLine();
+            String word = "";
+            String currTag = "";
+            System.out.println(line);
+            for (int i = 0; i < line.length(); i++) {
+                Character ch = line.charAt(i);
+                if (inTag) {
+
+                    // Covers case when tag name has leading whitespace.
+                    if (Character.isWhitespace(ch) && currTag.isEmpty()) {
+                        continue;
+                    // Hit trailing whitespace so tag name must be done
+                    } else if (Character.isWhitespace(ch) && !currTag.isEmpty()) {
+                        tagStack.push(currTag);
+                        currTag = "";
+                        continue;
                     } else {
-                        break;
+                        currTag += ch;
                     }
+
+                    // Hit ending bracket must be end of tag declaration.
+                    if (ch.equals('>')) {
+                        inTag = false;
+                    // Hit forwards slash, no longer inside current tag.
+                    } else if (ch.equals('/')) {
+                        System.out.println(tagStack.peek());
+                        tagStack.pop();
+                    }
+                    continue;
                 }
-            // If not whitespace start adding word
-            } else if (!ch.isBlank()) {
-                String word = "";
-                while (!ch.isBlank() && !ch.equals("<")) {
-                    // Keep concatenating until end of word
-                    word += ch;//URLDecoder.decode(ch, StandardCharsets.UTF_8);
-                    if (inputStream.hasNext()) {
-                        ch = inputStream.next();
+
+                // Opening bracket means start of a tag.
+                if (ch.equals('<')) {
+                    inTag = true;
+                    continue;
+                }
+
+                // Hit non whitespace and we are out of a tag, must be a word
+                if (!Character.isWhitespace(ch)) {
+                    word += ch;
+                // If hit whitespace must be end of a word
+                } else if (Character.isWhitespace(ch)) {
+                    // Add this word and it's count to the wordsCount map
+                    if (wordsCount.containsKey(word)) {
+                        wordsCount.compute(word, (k,v) -> v += 1);
                     } else {
-                        break;
+                        wordsCount.put(word, 1);
                     }
-                }
-                if (wordsCount.containsKey(word)) {
-                    // If word already found increment value.
-                    wordsCount.compute(word, (k, v) -> v += 1);
-                } else {
-                    // If word not already found add it.
-                    wordsCount.put(word, 1);
+                    word = "";
                 }
             }
         }
