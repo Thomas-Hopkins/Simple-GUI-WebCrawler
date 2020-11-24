@@ -9,6 +9,8 @@ import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 
 public class WebCrawler {
@@ -16,12 +18,28 @@ public class WebCrawler {
     private Set<String> traversedURLs;
     private Queue<String> pendingURLs;
     private Document document;
+    private boolean restrictDomain;
+    private String domainRestriction;
 
-    WebCrawler(String url) {
+    WebCrawler(String url, boolean restrictDomain) {
         wordsCount = new TreeMap<>();
         traversedURLs = new TreeSet<>();
         pendingURLs = new LinkedList<>();
         pendingURLs.add(url);
+        this.restrictDomain = restrictDomain;
+        if (restrictDomain) {
+            try {
+                domainRestriction = getDomainName(url);
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+                restrictDomain = false;
+            }
+        }
+    }
+
+    private String getDomainName(String url) throws URISyntaxException {
+        URI uri = new URI(url);
+        return uri.getHost();
     }
 
     private void addTraversed(String url) {
@@ -29,7 +47,13 @@ public class WebCrawler {
     }
 
     private void addPending(String url) {
-        pendingURLs.add(url);
+        if (restrictDomain) {
+            if (url.contains(domainRestriction)) {
+                pendingURLs.add(url);
+            }
+        } else {
+            pendingURLs.add(url);
+        }
     }
 
     private void parseDocument() {
@@ -52,13 +76,13 @@ public class WebCrawler {
             if (element.hasAttr("href") && !element.tagName().equals("link") && !element.tagName().equals("script")) {
                 String url = element.absUrl("href");
                 if (!(url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".gif") || url.endsWith(".ico")) && !url.isBlank()) {
-                    pendingURLs.add(element.absUrl("href"));
+                    addPending(element.absUrl("href"));
                 }
             }
         }
     }
 
-    public void openUrlDocument() {
+    private void openUrlDocument() {
         openUrlDocument(0);
     }
 
@@ -85,7 +109,7 @@ public class WebCrawler {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            traversedURLs.add(pendingURLs.peek());
+            addTraversed(pendingURLs.peek());
         }
         pendingURLs.remove();
 
@@ -95,13 +119,8 @@ public class WebCrawler {
         return traversedURLs.size();
     }
 
-    public void displayWordsCount() {
-        Map<String, Integer> sortedWords = new LinkedHashMap<>();
-        wordsCount.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue())
-                .forEachOrdered(x -> sortedWords.put(x.getKey(), x.getValue()));
-        sortedWords.forEach((k,v) -> System.out.println("Word: " + k + " | Occurrences: " + v));
+    public Map<String, Integer> getWordsCount() {
+        return wordsCount;
     }
 
     public String getCurrentUrl() {

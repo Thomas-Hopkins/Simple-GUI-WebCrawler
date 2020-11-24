@@ -1,12 +1,15 @@
 package edu.umsl;
 
 import java.util.InputMismatchException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Scanner;
 
-public class WebCrawlerMain {
+public class WebCrawlerConsole {
     public static void main(String[] args) throws InterruptedException {
         String url;
         int traversals;
+        boolean restrictDomain = false;
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter an URL to start crawling: ");
@@ -20,7 +23,12 @@ public class WebCrawlerMain {
             traversals = 1;
         }
 
-        WebCrawler webCrawler = new WebCrawler(url);
+        System.out.println("Restrict traversals to same domain? (y/n): ");
+        if (scanner.next().toUpperCase().equals("Y")) {
+            restrictDomain = true;
+        }
+
+        WebCrawler webCrawler = new WebCrawler(url, restrictDomain);
         while (webCrawler.getNumTraversed() < traversals) {
             Thread.sleep(100);
             if (webCrawler.doTraversal() == -1) {
@@ -30,7 +38,13 @@ public class WebCrawlerMain {
             System.out.println("Crawling... " + webCrawler.getCurrentUrl());
         }
         webCrawler.getNumTraversed();
-        webCrawler.displayWordsCount();
 
+        // Sort the map by values and output it
+        Map<String, Integer> sortedWords = new LinkedHashMap<>();
+        webCrawler.getWordsCount().entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue())
+                .forEachOrdered(x -> sortedWords.put(x.getKey(), x.getValue()));
+        sortedWords.forEach((k,v) -> System.out.println("Word: " + k + " | Occurrences: " + v));
     }
 }
