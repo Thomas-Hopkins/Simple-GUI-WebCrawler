@@ -31,9 +31,12 @@ public class WebCrawlerConsole {
         WebCrawler webCrawler = new WebCrawler(url, restrictDomain);
         while (webCrawler.getNumTraversed() < traversals) {
             Thread.sleep(100);
-            if (webCrawler.doTraversal() == -1) {
-                System.out.println("No more URLs found.");
-                break;
+            webCrawler.doTraversal();
+            if (webCrawler.getCurrentError() != null) {
+                System.out.println(webCrawler.getCurrentError());
+                if (webCrawler.getCurrentUrl()==null) {
+                    break;
+                }
             }
             System.out.println("Crawling... " + webCrawler.getCurrentUrl());
         }

@@ -20,19 +20,23 @@ public class WebCrawler {
     private Document document;
     private boolean restrictDomain;
     private String domainRestriction;
+    private String currentError;
 
     WebCrawler(String url, boolean restrictDomain) {
         wordsCount = new TreeMap<>();
         traversedURLs = new TreeSet<>();
         pendingURLs = new LinkedList<>();
         pendingURLs.add(url);
+        currentError = null;
         this.restrictDomain = restrictDomain;
+
+        // Try and get valid domain name
         if (restrictDomain) {
             try {
                 domainRestriction = getDomainName(url);
             } catch (URISyntaxException e) {
                 e.printStackTrace();
-                restrictDomain = false;
+                this.restrictDomain = false;
             }
         }
     }
@@ -47,6 +51,11 @@ public class WebCrawler {
     }
 
     private void addPending(String url) {
+        // Ensure no duplicate URLS, and not already traversed
+        if (traversedURLs.contains(url) || pendingURLs.contains(url)) {
+            return;
+        }
+        // Check domain if domain restrictions enabled
         if (restrictDomain) {
             if (url.contains(domainRestriction)) {
                 pendingURLs.add(url);
@@ -82,37 +91,46 @@ public class WebCrawler {
         }
     }
 
-    private void openUrlDocument() {
-        openUrlDocument(0);
+    private boolean openUrlDocument() {
+        return openUrlDocument(1);
     }
 
-    private void openUrlDocument(int tries) {
-        final int timeout = 5;
+    private boolean openUrlDocument(int numTimeoutTries) {
+        boolean successState = false;
+        final int maxTimeoutTries = 5;
         String urlStr = pendingURLs.peek();
+
+        // Try and connect to the url if we haven't already traversed it
         if (!traversedURLs.contains(urlStr)) {
             try {
                 document = Jsoup.connect(urlStr).get();
+                successState = true;
             } catch (UnsupportedMimeTypeException e) {
-                System.out.println("Unsupported document type: " + e.getMimeType() + " on " + urlStr);
+                e.printStackTrace();
+                currentError = "Unsupported document type: " + e.getMimeType() + " on " + urlStr;
             } catch (IllegalArgumentException | NoSuchElementException | MalformedURLException e) {
                 e.printStackTrace();
-                System.out.println("URL IS: " + urlStr);
+                currentError = e.getCause() + " URL IS: " + urlStr;
             } catch (SocketTimeoutException e) {
                 e.printStackTrace();
-                System.out.println("Connection timed out... ");
-                if (tries < timeout) {
-                    System.out.println("Trying again.");
-                    openUrlDocument(tries + 1);
+                currentError = "Connection timed out... ";
+                if (numTimeoutTries < maxTimeoutTries) {
+                    currentError += "Trying again x" + numTimeoutTries;
+                    successState = openUrlDocument(numTimeoutTries + 1);
                 }
             } catch (HttpStatusException e) {
-                System.out.println("HTTP Error code " + e.getStatusCode() + " on " + urlStr);
-            } catch (IOException e) {
                 e.printStackTrace();
+                currentError = "HTTP Error code " + e.getStatusCode() + " on " + urlStr;
+            } catch (Exception e) {
+                e.printStackTrace();
+                currentError = "Unknown error when attempting to open url: " + urlStr;
             }
             addTraversed(pendingURLs.peek());
+        } else {
+            successState = true;
         }
         pendingURLs.remove();
-
+        return successState;
     }
 
     public int getNumTraversed() {
@@ -127,12 +145,17 @@ public class WebCrawler {
         return pendingURLs.peek();
     }
 
-    public int doTraversal() {
+    public String getCurrentError() {
+        return currentError;
+    }
+
+    public void doTraversal() {
         if (pendingURLs.size() == 0) {
-            return -1;
+            currentError = "No more URLs left to parse.";
+            return;
         }
-        openUrlDocument();
-        parseDocument();
-        return 1;
+        if (openUrlDocument()) {
+            parseDocument();
+        }
     }
 }
