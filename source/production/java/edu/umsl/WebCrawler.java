@@ -6,7 +6,6 @@ import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -22,18 +21,18 @@ public class WebCrawler {
     private String domainRestriction;
     private String currentError;
 
-    WebCrawler(String url, boolean restrictDomain) {
+    WebCrawler(String startingURL, boolean restrictDomain) {
         wordsCount = new TreeMap<>();
         traversedURLs = new TreeSet<>();
         pendingURLs = new LinkedList<>();
-        pendingURLs.add(url);
+        pendingURLs.add(startingURL);
         currentError = null;
         this.restrictDomain = restrictDomain;
 
         // Try and get valid domain name
         if (restrictDomain) {
             try {
-                domainRestriction = getDomainName(url);
+                domainRestriction = getDomainName(startingURL);
             } catch (URISyntaxException e) {
                 e.printStackTrace();
                 this.restrictDomain = false;
@@ -46,11 +45,32 @@ public class WebCrawler {
         return uri.getHost();
     }
 
+    private String formatURL(String url) throws URISyntaxException {
+        // Remove Fragments and Query strings
+        URI uri = new URI(url);
+        uri = new URI(uri.getScheme(),uri.getHost(),uri.getPath(),null);
+        String uriStr = uri.toString();
+        // Remove trailing slashes
+        if (uriStr.endsWith("/")) {
+            return uriStr.substring(0,uriStr.length()-1);
+        } else {
+            return uriStr;
+        }
+    }
+
     private void addTraversed(String url) {
         traversedURLs.add(url);
     }
 
     private void addPending(String url) {
+        // Strip Query and fragments from URLs to ensure no duplicate webpages
+        try {
+            url = formatURL(url);
+        } catch (URISyntaxException e) {
+            // If reached must be invalid url
+            return;
+        }
+
         // Ensure no duplicate URLS, and not already traversed
         if (traversedURLs.contains(url) || pendingURLs.contains(url)) {
             return;
@@ -70,7 +90,7 @@ public class WebCrawler {
         for (Element element: document.getAllElements()) {
             if (element.hasText() && !element.ownText().isBlank() && !element.tagName().equals("script")) {
                 // Split element's text into words
-                for (String word : element.ownText().split("[\\s.,\\\\/;?!\\:\\-\\+\\)\\(\"“]")) {
+                for (String word : element.ownText().split("[\\s.,\\\\/;?!:\\-+)(\"]")) {
                     if (!word.isBlank() && word.matches("\\D+")) {
                         if (wordsCount.containsKey(word)) {
                             // Increment value by one if map contains the word
@@ -83,10 +103,7 @@ public class WebCrawler {
             }
             // If element contains a link append that link to pending urls
             if (element.hasAttr("href") && !element.tagName().equals("link") && !element.tagName().equals("script")) {
-                String url = element.absUrl("href");
-                if (!(url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".gif") || url.endsWith(".ico")) && !url.isBlank()) {
-                    addPending(element.absUrl("href"));
-                }
+                addPending(element.absUrl("href"));
             }
         }
     }
@@ -150,6 +167,7 @@ public class WebCrawler {
     }
 
     public void doTraversal() {
+        currentError = null;
         if (pendingURLs.size() == 0) {
             currentError = "No more URLs left to parse.";
             return;

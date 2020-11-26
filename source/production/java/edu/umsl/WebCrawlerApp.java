@@ -31,12 +31,15 @@ public class WebCrawlerApp extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
+        // Setup grid //
         GridPane rootGrid = new GridPane();
         rootGrid.setHgap(5.5);
         rootGrid.setVgap(5.5);
-        rootGrid.setPadding(new Insets(10, 10, 10, 10));
+        rootGrid.setPadding(new Insets(12, 12, 12, 12));
 
+        // Configuration area //
         Label configLabel = new Label("Webcrawler Configuration");
+        configLabel.setStyle("-fx-font-weight: bold");
         rootGrid.add(configLabel, 0, 0, 2, 1);
 
         Label startUrlLabel = new Label("Starting URL:");
@@ -51,6 +54,7 @@ public class WebCrawlerApp extends Application {
         iterationsField = new TextField("100");
         rootGrid.add(iterationsField, 1, 2);
 
+        // Start Button Area //
         btnStartCrawl = new Button("Start Crawl");
         rootGrid.add(btnStartCrawl, 0, 3 );
         btnStartCrawl.setOnAction(new StartCrawlHandler());
@@ -58,25 +62,26 @@ public class WebCrawlerApp extends Application {
         chkDomainRestrict = new CheckBox("Restrict Domain");
         rootGrid.add(chkDomainRestrict, 1, 3);
 
+        // Progress Bar Area //
         progressBar = new ProgressBar(0);
         rootGrid.add(progressBar, 0, 4 );
 
         progressLabel = new Label();
         rootGrid.add(progressLabel, 1, 4);
 
+        // Status Output Area //
         outputField = new TextArea();
         outputField.maxWidthProperty().bind(iterationsLabel.widthProperty().multiply(4));
         rootGrid.add(outputField, 0, 5, 2, 1);
 
+        // Word Count Table //
         wordTable = new TableView<>();
         wordTable.setEditable(false);
 
         TableColumn<WordCount, String> wordColumn = new TableColumn<>("Word");
-        wordColumn.setMinWidth(wordTable.getWidth()/2);
         wordColumn.setCellValueFactory(data -> data.getValue().getWord());
 
         TableColumn<WordCount, Integer> countColumn = new TableColumn<>("Count");
-        countColumn.setMinWidth(wordTable.getWidth()/2);
         countColumn.setCellValueFactory(data -> data.getValue().getCount().asObject());
 
         wordTable.setItems(data);
@@ -87,6 +92,7 @@ public class WebCrawlerApp extends Application {
 
         rootGrid.add(wordTable, 2, 0, 2, 6);
 
+        // Parent to scene //
         Scene scene = new Scene(rootGrid,
                 Screen.getPrimary().getBounds().getMaxX()/3,
                 Screen.getPrimary().getBounds().getMaxY()/3);

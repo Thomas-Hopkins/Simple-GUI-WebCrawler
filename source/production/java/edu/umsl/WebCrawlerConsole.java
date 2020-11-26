@@ -28,19 +28,21 @@ public class WebCrawlerConsole {
             restrictDomain = true;
         }
 
+        // Main loop
         WebCrawler webCrawler = new WebCrawler(url, restrictDomain);
         while (webCrawler.getNumTraversed() < traversals) {
             Thread.sleep(100);
             webCrawler.doTraversal();
             if (webCrawler.getCurrentError() != null) {
+                // If has an error print it
                 System.out.println(webCrawler.getCurrentError());
                 if (webCrawler.getCurrentUrl()==null) {
+                    // If current URL is null there are no more urls left
                     break;
                 }
             }
             System.out.println("Crawling... " + webCrawler.getCurrentUrl());
         }
-        webCrawler.getNumTraversed();
 
         // Sort the map by values and output it
         Map<String, Integer> sortedWords = new LinkedHashMap<>();
