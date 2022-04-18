@@ -125,7 +125,7 @@ public class WebCrawlerApp extends Application {
         protected Boolean call() throws Exception {
             // Disable start button, cleanup table data, and instantiate the WebCrawler
             btnStartCrawl.setDisable(true);
-            data.removeAll(data);
+            wordTable.getItems().clear();
             WebCrawler webCrawler = new WebCrawler(startUrlField.getText(), chkDomainRestrict.isSelected());
 
             // Try to get the number of iterations from the field

@@ -70,11 +70,6 @@ public class WebCrawler {
             // If reached must be invalid url
             return;
         }
-
-        // Ensure no duplicate URLS, and not already traversed
-        if (traversedURLs.contains(url) || pendingURLs.contains(url)) {
-            return;
-        }
         // Check domain if domain restrictions enabled
         if (restrictDomain) {
             if (url.contains(domainRestriction)) {
@@ -142,9 +137,7 @@ public class WebCrawler {
                 e.printStackTrace();
                 currentError = "Unknown error when attempting to open url: " + urlStr;
             }
-            addTraversed(pendingURLs.peek());
-        } else {
-            successState = true;
+            addTraversed(urlStr);
         }
         pendingURLs.remove();
         return successState;
@@ -174,6 +167,9 @@ public class WebCrawler {
         }
         if (openUrlDocument()) {
             parseDocument();
+        } else {
+            // Hit a duplicate url, do next traversal
+            doTraversal();
         }
     }
 }
